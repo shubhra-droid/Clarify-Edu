@@ -1,0 +1,39 @@
+# ClarifyEdu API — Production Dependencies
+# Python 3.11+
+
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Validation & Settings
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# Async Task Queue (wired in later steps)
+celery[redis]==5.4.0
+redis==5.2.1
+
+# Document Parsing (wired in later steps)
+PyPDF2==3.0.1
+pdfplumber==0.11.4
+python-docx==1.1.2
+
+# Database (Motor async MongoDB — wired in later steps)
+motor==3.6.0
+
+# AI / LLM (wired in later steps)
+openai==1.58.1
+httpx==0.28.1
+
+# Security (wired in later steps)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Utilities
+python-dotenv==1.0.1
+aiofiles==24.1.0
+
+# Dev / Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
