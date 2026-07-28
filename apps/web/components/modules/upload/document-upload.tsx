@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FileText, Loader2, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,9 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
+  const router = useRouter();
 
   const validateFile = useCallback((candidate: File): string | null => {
     const extension = `.${candidate.name.split(".").pop()?.toLowerCase() ?? ""}`;
@@ -54,6 +58,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         return;
       }
       setError(null);
+      setStatusMessage(null);
       setFile(candidate);
     },
     [validateFile]
@@ -79,12 +84,44 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
       const document = await uploadDocument(file);
       onUploadComplete?.(document);
       setFile(null);
+      setProcessingDocumentId(document.id);
+
+      if (document.status === "completed") {
+        setStatusMessage("Upload completed. Opening the Study workspace now.");
+        router.push("/dashboard/study");
+        return;
+      }
+
+      setStatusMessage(
+        "Upload received and is being processed. We’ll redirect you to the study view as soon as it completes."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
     }
   };
+
+  useEffect(() => {
+    if (!processingDocumentId) return;
+
+    const intervalId = window.setInterval(async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/documents/${processingDocumentId}`);
+        if (!response.ok) return;
+
+        const doc = await response.json();
+        if (doc.status === "completed") {
+          window.clearInterval(intervalId);
+          router.push("/dashboard/study");
+        }
+      } catch {
+        // Ignore transient polling errors.
+      }
+    }, 2000);
+
+    return () => window.clearInterval(intervalId);
+  }, [processingDocumentId, router]);
 
   return (
     <Card>
@@ -197,6 +234,20 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
             </>
           )}
         </Button>
+
+        {statusMessage && (
+          <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
+            <p className="text-sm text-foreground">{statusMessage}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={() => router.push("/dashboard/study")}>
+                Open Study
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/mindmap")}>
+                Open Mind Map
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {ACCEPTED_FILE_EXTENSIONS.map((ext) => (

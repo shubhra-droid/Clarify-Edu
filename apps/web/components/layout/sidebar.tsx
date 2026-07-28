@@ -12,19 +12,17 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 const NAV_ITEMS: {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  disabled?: boolean;
 }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/upload", label: "Upload", icon: Upload },
-  { href: "/dashboard/study", label: "Study", icon: BookOpen, disabled: true },
-  { href: "/dashboard/mindmap", label: "Mind Map", icon: Brain, disabled: true },
+  { href: "/dashboard/study", label: "Study", icon: BookOpen },
+  { href: "/dashboard/mindmap", label: "Mind Map", icon: Brain },
 ];
 
 interface SidebarProps {
@@ -55,24 +53,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 p-3" aria-label="Dashboard navigation">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, disabled }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
-
-          if (disabled) {
-            return (
-              <div
-                key={href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground/60"
-                aria-disabled="true"
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                {label}
-                <Badge variant="outline" className="ml-auto text-[10px]">
-                  Soon
-                </Badge>
-              </div>
-            );
-          }
 
           return (
             <Link
@@ -82,7 +64,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
               className={cn(
                 "focus-ring flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/15 text-primary shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
               aria-current={isActive ? "page" : undefined}

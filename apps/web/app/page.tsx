@@ -35,7 +35,7 @@ export default function HomePage() {
 
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button asChild size="lg">
-            <Link href="/dashboard" aria-label="Get started with ClarifyEdu">
+            <Link href="/login" aria-label="Get started with ClarifyEdu">
               <BookOpen className="h-4 w-4" aria-hidden="true" />
               Get Started
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

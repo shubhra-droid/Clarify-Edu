@@ -24,6 +24,12 @@ class DocumentResponse(BaseModel):
     uploaded_at: datetime
     processed_at: datetime | None = None
     error_message: str | None = None
+    parsed_sections: dict | None = None
+    study_summary: str | None = None
+    key_points: list[dict] = Field(default_factory=list)
+    flashcards: list[dict] = Field(default_factory=list)
+    mind_map_nodes: list[dict] = Field(default_factory=list)
+    mind_map_edges: list[dict] = Field(default_factory=list)
 
 
 class PaginatedDocumentsResponse(BaseModel):

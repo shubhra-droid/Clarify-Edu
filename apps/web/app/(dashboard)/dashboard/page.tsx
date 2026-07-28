@@ -24,10 +24,35 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    listDocuments()
-      .then((res) => setDocuments(res.items))
-      .catch(() => setDocuments([]))
-      .finally(() => setIsLoading(false));
+    let isMounted = true;
+
+    const refreshDocuments = async () => {
+      try {
+        const res = await listDocuments();
+        if (isMounted) {
+          setDocuments(res.items);
+        }
+      } catch {
+        if (isMounted) {
+          setDocuments([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void refreshDocuments();
+
+    const intervalId = window.setInterval(() => {
+      void refreshDocuments();
+    }, 6000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const handleUploadComplete = (doc: UploadedDocument) => {

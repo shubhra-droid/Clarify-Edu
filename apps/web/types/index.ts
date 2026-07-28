@@ -60,6 +60,12 @@ export interface UploadedDocument {
   uploadedAt: string;
   processedAt?: string;
   errorMessage?: string;
+  parsedSections?: Record<string, unknown> | null;
+  studySummary?: string | null;
+  keyPoints?: Array<Record<string, unknown>>;
+  flashcards?: Array<Record<string, unknown>>;
+  mindMapNodes?: MindMapNode[];
+  mindMapEdges?: MindMapEdge[];
 }
 
 // ---------------------------------------------------------------------------

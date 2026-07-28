@@ -10,6 +10,23 @@ interface DocumentResponse {
   uploaded_at: string;
   processed_at?: string;
   error_message?: string;
+  parsed_sections?: Record<string, unknown> | null;
+  study_summary?: string | null;
+  key_points?: Array<Record<string, unknown>>;
+  flashcards?: Array<Record<string, unknown>>;
+  mind_map_nodes?: Array<{
+    id: string;
+    label: string;
+    type: "root" | "concept" | "detail" | "example";
+    position: { x: number; y: number };
+    data?: Record<string, unknown>;
+  }>;
+  mind_map_edges?: Array<{
+    id: string;
+    source: string;
+    target: string;
+    label?: string;
+  }>;
 }
 
 function mapDocument(doc: DocumentResponse): UploadedDocument {
@@ -22,6 +39,12 @@ function mapDocument(doc: DocumentResponse): UploadedDocument {
     uploadedAt: doc.uploaded_at,
     processedAt: doc.processed_at,
     errorMessage: doc.error_message,
+    parsedSections: doc.parsed_sections,
+    studySummary: doc.study_summary,
+    keyPoints: doc.key_points,
+    flashcards: doc.flashcards,
+    mindMapNodes: doc.mind_map_nodes,
+    mindMapEdges: doc.mind_map_edges,
   };
 }
 

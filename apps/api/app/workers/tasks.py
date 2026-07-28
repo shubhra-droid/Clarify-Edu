@@ -9,7 +9,7 @@ from typing import Any
 from celery import Celery
 
 from app.core.config import settings
-from app.core.database import get_collection
+from app.core.database import connect_to_mongodb, get_collection
 from app.models.document import COLLECTION_NAME as DOC_COLLECTION, DocumentStatus
 from app.services.extraction_service import extraction_service
 from app.services.ai_service import ai_service
@@ -34,6 +34,7 @@ STUDY_MATERIALS_COLLECTION = "study_materials"
 async def process_document_async(document_id: str) -> None:
     """Asynchronous pipeline: Extraction -> AI Orchestration -> TTS -> Save."""
     logger.info("Starting async document processing pipeline for ID: %s", document_id)
+    await connect_to_mongodb()
     doc_collection = get_collection(DOC_COLLECTION)
     materials_collection = get_collection(STUDY_MATERIALS_COLLECTION)
 
@@ -89,6 +90,13 @@ async def process_document_async(document_id: str) -> None:
 
         # 6. Mark Document as Completed
         now = datetime.now(timezone.utc)
+        parsed_sections = {
+            "summary": material.summary,
+            "key_points": [entry.model_dump() for entry in material.key_definitions],
+            "flashcards": [card.model_dump() for card in material.flashcards],
+            "mind_map_nodes": [node.model_dump() for node in material.mind_map.nodes],
+            "mind_map_edges": [edge.model_dump() for edge in material.mind_map.edges],
+        }
         await doc_collection.update_one(
             {"_id": document_id},
             {
@@ -96,6 +104,12 @@ async def process_document_async(document_id: str) -> None:
                     "status": DocumentStatus.COMPLETED.value,
                     "processed_at": now,
                     "error_message": None,
+                    "parsed_sections": parsed_sections,
+                    "study_summary": material.summary,
+                    "key_points": parsed_sections["key_points"],
+                    "flashcards": parsed_sections["flashcards"],
+                    "mind_map_nodes": parsed_sections["mind_map_nodes"],
+                    "mind_map_edges": parsed_sections["mind_map_edges"],
                 }
             },
         )

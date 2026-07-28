@@ -37,9 +37,12 @@ def create_document_record(
         "uploaded_at": now,
         "processed_at": None,
         "error_message": None,
-    }
-
-
+    "parsed_sections": None,
+    "study_summary": None,
+    "key_points": [],
+    "flashcards": [],
+    "mind_map_nodes": [],
+    "mind_map_edges": [],
 def document_to_response(doc: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": doc["_id"],
@@ -50,4 +53,10 @@ def document_to_response(doc: dict[str, Any]) -> dict[str, Any]:
         "uploaded_at": doc["uploaded_at"],
         "processed_at": doc.get("processed_at"),
         "error_message": doc.get("error_message"),
+        "parsed_sections": doc.get("parsed_sections"),
+        "study_summary": doc.get("study_summary"),
+        "key_points": doc.get("key_points", []),
+        "flashcards": doc.get("flashcards", []),
+        "mind_map_nodes": doc.get("mind_map_nodes", []),
+        "mind_map_edges": doc.get("mind_map_edges", []),
     }
