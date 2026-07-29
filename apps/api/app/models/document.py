@@ -37,12 +37,15 @@ def create_document_record(
         "uploaded_at": now,
         "processed_at": None,
         "error_message": None,
-    "parsed_sections": None,
-    "study_summary": None,
-    "key_points": [],
-    "flashcards": [],
-    "mind_map_nodes": [],
-    "mind_map_edges": [],
+        "parsed_sections": None,
+        "study_summary": None,
+        "key_points": [],
+        "flashcards": [],
+        "mind_map_nodes": [],
+        "mind_map_edges": [],
+    }
+
+
 def document_to_response(doc: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": doc["_id"],

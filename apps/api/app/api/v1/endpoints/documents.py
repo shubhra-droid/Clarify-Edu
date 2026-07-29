@@ -1,5 +1,7 @@
 """Document upload and retrieval endpoints."""
 
+import traceback
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.core.dependencies import require_database
@@ -40,6 +42,13 @@ async def upload_document(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except Exception as exc:
+        print(f"Document upload failed: {exc}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is unavailable",
+        ) from exc
 
     return DocumentResponse(**result)
 
@@ -54,7 +63,15 @@ async def list_documents(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> PaginatedDocumentsResponse:
-    result = await document_service.list_documents(page=page, page_size=page_size)
+    try:
+        result = await document_service.list_documents(page=page, page_size=page_size)
+    except Exception as exc:
+        print(f"Document listing failed: {exc}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is unavailable",
+        ) from exc
     return PaginatedDocumentsResponse(**result)
 
 
@@ -65,7 +82,15 @@ async def list_documents(
     dependencies=[Depends(require_database)],
 )
 async def get_document(document_id: str) -> DocumentResponse:
-    result = await document_service.get_document(document_id)
+    try:
+        result = await document_service.get_document(document_id)
+    except Exception as exc:
+        print(f"Document lookup failed: {exc}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is unavailable",
+        ) from exc
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

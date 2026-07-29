@@ -44,8 +44,8 @@ export function Navbar({ title = "Dashboard" }: NavbarProps) {
       </Sheet>
 
       <div className="flex flex-1 items-center gap-3">
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-        <Badge variant="secondary" className="hidden sm:inline-flex capitalize">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-100">{title}</h1>
+        <Badge variant="secondary" className="hidden sm:inline-flex capitalize border-primary/30 bg-primary/15 text-slate-100">
           <Sparkles className="mr-1 h-3 w-3" aria-hidden="true" />
           {neuroProfile} mode
         </Badge>

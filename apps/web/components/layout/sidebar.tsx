@@ -64,8 +64,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
               className={cn(
                 "focus-ring flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary/15 text-primary shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-primary/20 text-slate-50 shadow-sm"
+                  : "text-slate-300 hover:bg-muted hover:text-slate-100"
               )}
               aria-current={isActive ? "page" : undefined}
             >
@@ -83,8 +83,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           href="/dashboard/settings"
           onClick={onNavigate}
           className={cn(
-            "focus-ring flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            pathname === "/dashboard/settings" && "bg-primary/10 text-primary"
+            "focus-ring flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-muted hover:text-slate-100",
+            pathname === "/dashboard/settings" && "bg-primary/20 text-slate-50"
           )}
           aria-current={
             pathname === "/dashboard/settings" ? "page" : undefined
@@ -96,7 +96,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <Link
           href="/"
           onClick={onNavigate}
-          className="focus-ring mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="focus-ring mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-muted hover:text-slate-100"
         >
           <Home className="h-4 w-4" aria-hidden="true" />
           Home

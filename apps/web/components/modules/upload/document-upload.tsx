@@ -124,13 +124,13 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   }, [processingDocumentId, router]);
 
   return (
-    <Card>
+    <Card className="border-slate-700 bg-slate-900 text-white shadow-xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-white">
           <Upload className="h-5 w-5 text-primary" aria-hidden="true" />
           Upload Study Material
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-slate-300">
           PDF, TXT, or DOCX — up to {MAX_UPLOAD_SIZE_MB}MB. Content will be
           transformed into adaptive formats.
         </CardDescription>
@@ -152,10 +152,10 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={cn(
-            "focus-ring flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors",
+            "focus-ring flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-600 bg-slate-800/80 p-8 transition-colors",
             isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25 hover:border-primary/50"
+              ? "border-primary bg-primary/10"
+              : "hover:border-primary/60"
           )}
           aria-label="File drop zone. Press Enter to browse files."
         >
@@ -163,10 +163,10 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
             className="mb-3 h-10 w-10 text-muted-foreground"
             aria-hidden="true"
           />
-          <p className="mb-1 text-sm font-medium">
+          <p className="mb-1 text-sm font-medium text-white">
             Drag & drop your document here
           </p>
-          <p className="mb-4 text-xs text-muted-foreground">
+          <p className="mb-4 text-xs text-slate-300">
             or click to browse
           </p>
           <input
@@ -182,6 +182,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
           <Button
             variant="outline"
             size="sm"
+            className="border border-slate-600 bg-slate-800 text-white hover:bg-slate-700"
             onClick={() => document.getElementById("file-input")?.click()}
           >
             Browse Files
@@ -189,12 +190,12 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         </div>
 
         {file && (
-          <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+          <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/80 p-3">
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
               <div>
-                <p className="text-sm font-medium">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-white">{file.name}</p>
+                <p className="text-xs text-slate-300">
                   {(file.size / 1024).toFixed(1)} KB
                 </p>
               </div>
@@ -237,7 +238,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
 
         {statusMessage && (
           <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
-            <p className="text-sm text-foreground">{statusMessage}</p>
+            <p className="text-sm text-slate-100">{statusMessage}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={() => router.push("/dashboard/study")}>
                 Open Study

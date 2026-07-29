@@ -60,7 +60,8 @@
   }
 
   body {
-    @apply bg-slate-900 text-slate-100 antialiased;
+    @apply bg-slate-900 antialiased;
+    color: #0f172a;
     line-height: var(--a11y-line-height);
     letter-spacing: var(--a11y-letter-spacing);
     word-spacing: var(--a11y-word-spacing);
@@ -71,8 +72,8 @@
   .a11y-high-contrast {
     --foreground: 0 0% 100%;
     --background: 222 47% 7%;
-    --border: 0 0% 0%;
-    --muted-foreground: 0 0% 15%;
+    --border: 0 0% 100%;
+    --muted-foreground: 0 0% 92%;
   }
 
   .dark.a11y-high-contrast,

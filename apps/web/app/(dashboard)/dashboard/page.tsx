@@ -67,10 +67,10 @@ export default function DashboardPage() {
             <Sparkles className="mr-1 h-3 w-3" aria-hidden="true" />
             Adaptive Learning Engine
           </Badge>
-          <h2 id="dashboard-heading" className="text-2xl font-bold tracking-tight">
+          <h2 id="dashboard-heading" className="text-2xl font-bold tracking-tight text-slate-900">
             Welcome to ClarifyEdu
           </h2>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-1 text-slate-700">
             Upload a document to generate mind maps, ADHD summaries, quizzes, and
             more — tailored to your learning profile.
           </p>

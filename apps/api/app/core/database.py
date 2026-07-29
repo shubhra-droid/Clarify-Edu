@@ -164,20 +164,27 @@ async def connect_to_mongodb() -> None:
     """Initialize Motor client and verify connectivity with Mock fallback."""
     global _client, _database, _is_mock
 
+    mongo_uri = getattr(settings, "MONGODB_URL", None) or settings.MONGODB_URI
+
     try:
-        real_client = AsyncIOMotorClient(settings.MONGODB_URI, serverSelectionTimeoutMS=2000)
+        real_client = AsyncIOMotorClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=5000,
+            maxPoolSize=10,
+            minPoolSize=1,
+        )
         # Verify connection
         await real_client.admin.command("ping")
         _client = real_client
         _database = _client[settings.MONGODB_DB_NAME]
         _is_mock = False
-        logger.info("Connected to MongoDB at %s", settings.MONGODB_URI)
+        logger.info("Connected to MongoDB at %s", mongo_uri)
     except Exception as exc:
         logger.warning(
             "Could not connect to MongoDB (%s). Falling back to in-memory Mock client.",
             exc,
         )
-        _client = MockMotorClient(settings.MONGODB_URI)
+        _client = MockMotorClient(mongo_uri)
         _database = _client[settings.MONGODB_DB_NAME]
         _is_mock = True
 

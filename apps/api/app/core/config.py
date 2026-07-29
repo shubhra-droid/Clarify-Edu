@@ -44,7 +44,8 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 25
 
     # Database (wired in Step 2+)
-    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_URI: str = "mongodb://127.0.0.1:27017"
+    MONGODB_URL: str = "mongodb://127.0.0.1:27017"
     MONGODB_DB_NAME: str = "clarify_edu"
 
     # Redis / Celery (wired in Step 2+)
