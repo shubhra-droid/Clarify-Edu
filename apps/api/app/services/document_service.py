@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from app.core.config import settings
-from app.core.database import get_collection
 from app.models.document import (
     COLLECTION_NAME,
     DocumentStatus,
@@ -12,6 +11,7 @@ from app.models.document import (
     document_to_response,
 )
 from app.services.storage_service import storage_service
+from app.services.document_store import document_store
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,7 @@ class DocumentService:
             status=DocumentStatus.PENDING,
         )
 
-        collection = get_collection(COLLECTION_NAME)
-        await collection.insert_one(record)
+        await document_store.save_document(record["_id"], record)
 
         logger.info("Document created: %s", record["_id"])
         return document_to_response(record)
@@ -52,17 +51,8 @@ class DocumentService:
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
-        collection = get_collection(COLLECTION_NAME)
         skip = (page - 1) * page_size
-
-        total = await collection.count_documents({})
-        cursor = (
-            collection.find({})
-            .sort("uploaded_at", -1)
-            .skip(skip)
-            .limit(page_size)
-        )
-        docs = await cursor.to_list(length=page_size)
+        docs, total = await document_store.list_documents(skip, page_size)
 
         return {
             "items": [document_to_response(doc) for doc in docs],
@@ -73,8 +63,7 @@ class DocumentService:
         }
 
     async def get_document(self, document_id: str) -> dict[str, Any] | None:
-        collection = get_collection(COLLECTION_NAME)
-        doc = await collection.find_one({"_id": document_id})
+        doc = await document_store.get_document(document_id)
         if doc is None:
             return None
         return document_to_response(doc)

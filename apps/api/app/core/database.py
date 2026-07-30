@@ -164,9 +164,12 @@ async def connect_to_mongodb() -> None:
     """Initialize Motor client and verify connectivity with Mock fallback."""
     global _client, _database, _is_mock
 
-    mongo_uri = getattr(settings, "MONGODB_URL", None) or settings.MONGODB_URI
-
+    mongo_uri = None
     try:
+        mongo_uri = getattr(settings, "MONGODB_URL", None) or getattr(settings, "MONGODB_URI", None)
+        if not mongo_uri:
+            raise ValueError("No MongoDB URI configured (MONGODB_URL / MONGODB_URI missing)")
+
         real_client = AsyncIOMotorClient(
             mongo_uri,
             serverSelectionTimeoutMS=5000,
@@ -184,9 +187,9 @@ async def connect_to_mongodb() -> None:
             "Could not connect to MongoDB (%s). Falling back to in-memory Mock client.",
             exc,
         )
-        _client = MockMotorClient(mongo_uri)
+        _client = MockMotorClient(mongo_uri or "mock://local")
         _database = _client[settings.MONGODB_DB_NAME]
-        _is_mock = True
+        _is_mock = True 
 
 
 async def close_mongodb_connection() -> None:

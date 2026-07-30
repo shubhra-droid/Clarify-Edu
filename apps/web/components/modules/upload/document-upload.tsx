@@ -20,6 +20,7 @@ import {
 import { uploadDocument } from "@/services/documents";
 import type { UploadedDocument } from "@/types";
 import { cn } from "@/lib/utils";
+import { useDocumentStore } from "@/store/document-store";
 
 interface DocumentUploadProps {
   onUploadComplete?: (document: UploadedDocument) => void;
@@ -33,19 +34,19 @@ const profileOptions: Array<{
   subtitle: string;
   highlights: string[];
 }> = [
-  {
-    id: "dyslexia",
-    title: "Dyslexic Profile",
-    subtitle: "OpenDyslexic-inspired readability, spaced text, audio-first learning, and supportive study pacing.",
-    highlights: ["Letter spacing & bionic reading", "Audio support", "Syllable-friendly layout"],
-  },
-  {
-    id: "autism",
-    title: "Autistic Profile",
-    subtitle: "Low-sensory structure, calm visual hierarchy, clear bullet summaries, and uncluttered mind maps.",
-    highlights: ["Structured sections", "Minimal clutter", "Visual clarity"],
-  },
-];
+    {
+      id: "dyslexia",
+      title: "Dyslexic Profile",
+      subtitle: "OpenDyslexic-inspired readability, spaced text, audio-first learning, and supportive study pacing.",
+      highlights: ["Letter spacing & bionic reading", "Audio support", "Syllable-friendly layout"],
+    },
+    {
+      id: "autism",
+      title: "Autistic Profile",
+      subtitle: "Low-sensory structure, calm visual hierarchy, clear bullet summaries, and uncluttered mind maps.",
+      highlights: ["Structured sections", "Minimal clutter", "Visual clarity"],
+    },
+  ];
 
 export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -110,6 +111,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
       setUploadedDocument(document);
       setFile(null);
       setProcessingDocumentId(document.id);
+      useDocumentStore.getState().addDocument(document);
 
       if (document.status === "completed") {
         setStatusMessage("Upload completed. Your adaptive workspace is ready.");

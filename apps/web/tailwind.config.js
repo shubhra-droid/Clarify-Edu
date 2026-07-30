@@ -46,6 +46,9 @@ module.exports = {
           mint: "#F0FAF5",
           blue: "#F0F7FF",
         },
+        "text-primary": "#FFFFFF",
+        "text-secondary": "#E9D5FF",
+        "text-muted": "#C4B5FD",
       },
       borderRadius: {
         lg: "var(--radius)",

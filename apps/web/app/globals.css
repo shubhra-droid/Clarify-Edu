@@ -61,7 +61,7 @@
 
   body {
     @apply bg-slate-900 antialiased;
-    color: #0f172a;
+    color: #FFFFFF;
     line-height: var(--a11y-line-height);
     letter-spacing: var(--a11y-letter-spacing);
     word-spacing: var(--a11y-word-spacing);

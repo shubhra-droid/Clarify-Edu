@@ -1,61 +1,66 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Brain, Sparkles } from "lucide-react";
+import { Brain, Sparkles, AlertCircle } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getDocument, listDocuments } from "@/services/documents";
+import { useDocumentStore } from "@/store/document-store";
 import type { UploadedDocument } from "@/types";
 
 type LearnerProfile = "dyslexia" | "autism";
 
 export default function MindMapPage() {
+  const { documents, selectedDocumentId, setSelectedDocumentId } = useDocumentStore();
   const searchParams = useSearchParams();
   const profile = (searchParams.get("profile") as LearnerProfile | null) ?? "dyslexia";
-  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
-
+  // If no document is selected, auto-select the first one available
   useEffect(() => {
-    const loadDocuments = async () => {
-      try {
-        const response = await listDocuments(1, 10);
-        setDocuments(response.items);
-        if (response.items[0]) {
-          setSelectedId(response.items[0].id);
-          setSelectedDoc(response.items[0]);
-        }
-      } catch {
-        setDocuments([]);
+    if (!selectedDocumentId && documents.length > 0) {
+      const firstDoc = documents[0];
+      if (firstDoc) {
+        setSelectedDocumentId(firstDoc.id);
       }
-    };
+    }
+  }, [documents, selectedDocumentId, setSelectedDocumentId]);
 
-    void loadDocuments();
-  }, []);
+  const selectedId = selectedDocumentId ?? "";
+  const selectedDoc = documents.find((doc) => doc.id === selectedId) || null;
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fallbackNodes, setFallbackNodes] = useState<any[] | null>(null);
+  const [fallbackEdges, setFallbackEdges] = useState<any[] | null>(null);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (selectedDoc && (!selectedDoc.mindMapNodes || selectedDoc.mindMapNodes.length === 0)) {
+      setIsLoading(true);
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/generate-mindmap?document_id=${selectedId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to generate mind map");
+          return res.json();
+        })
+        .then(data => {
+          setFallbackNodes(data.nodes);
+          setFallbackEdges(data.edges);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          setError(err.message);
+          setIsLoading(false);
+        });
+    } else {
+      setError(null);
+      setIsLoading(false);
+      setFallbackNodes(null);
+      setFallbackEdges(null);
+    }
+  }, [selectedDoc, selectedId]);
 
-    const loadSelected = async () => {
-      const doc = await getDocument(selectedId);
-      setSelectedDoc(doc);
-    };
-
-    void loadSelected();
-  }, [selectedId]);
-
-  const nodes = selectedDoc?.mindMapNodes?.length ? selectedDoc.mindMapNodes : [
-    { id: "root", label: "Main Topic", type: "root", position: { x: 250, y: 40 } },
-    { id: "concept_1", label: "Core Idea", type: "concept", position: { x: 120, y: 180 } },
-    { id: "detail_1", label: "Supporting Detail", type: "detail", position: { x: 320, y: 180 } },
-  ];
-  const edges = selectedDoc?.mindMapEdges?.length ? selectedDoc.mindMapEdges : [
-    { id: "e_root_1", source: "root", target: "concept_1", label: "contains" },
-    { id: "e_root_2", source: "root", target: "detail_1", label: "supports" },
-  ];
+  const nodes = selectedDoc?.mindMapNodes?.length ? selectedDoc.mindMapNodes : (fallbackNodes || []);
+  const edges = selectedDoc?.mindMapEdges?.length ? selectedDoc.mindMapEdges : (fallbackEdges || []);
 
   const profileTheme = useMemo(() => {
     if (profile === "autism") {
@@ -94,14 +99,14 @@ export default function MindMapPage() {
             </div>
             <select
               value={selectedId}
-              onChange={(event) => setSelectedId(event.target.value)}
+              onChange={(event) => setSelectedDocumentId(event.target.value)}
               className="rounded-lg border border-purple-400/30 bg-[#140a24] px-3 py-2 text-sm text-slate-100"
             >
               {documents.length === 0 ? (
-                <option value="">No documents yet</option>
+                <option value="" className="bg-purple-950 text-white">No documents yet</option>
               ) : (
                 documents.map((doc) => (
-                  <option key={doc.id} value={doc.id}>{doc.filename}</option>
+                  <option key={doc.id} value={doc.id} className="bg-purple-950 text-white">{doc.filename}</option>
                 ))
               )}
             </select>
@@ -114,23 +119,42 @@ export default function MindMapPage() {
                 <h3 className="text-lg font-semibold text-white">Interactive Concept Map</h3>
               </div>
               <div className="space-y-3">
-                {nodes.map((node) => (
-                  <div key={node.id} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-3">
-                    <p className="font-medium text-slate-100">{node.label}</p>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">{node.type}</p>
+                {isLoading ? (
+                  <div className="flex animate-pulse flex-col gap-3">
+                    <div className="h-16 rounded-lg bg-purple-900/40"></div>
+                    <div className="h-16 rounded-lg bg-purple-900/40"></div>
                   </div>
-                ))}
+                ) : error ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-4 text-red-200">
+                    <AlertCircle className="mb-2 h-5 w-5" />
+                    {error}
+                  </div>
+                ) : (
+                  nodes.map((node) => (
+                    <div key={node.id} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-3">
+                      <p className="font-medium text-slate-100">{node.label}</p>
+                      <p className="text-xs uppercase tracking-wide text-purple-200">{node.type}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
             <div className={`rounded-2xl border p-4 ${profileTheme.panel}`}>
               <h3 className="mb-3 text-lg font-semibold text-white">Connections</h3>
               <ul className={`space-y-2 text-sm ${profileTheme.muted}`}>
-                {edges.map((edge) => (
-                  <li key={edge.id} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-2">
-                    <span className="font-medium text-slate-100">{edge.source}</span> → <span className="font-medium text-slate-100">{edge.target}</span>
-                    {edge.label ? <span className="ml-2 text-slate-400">({edge.label})</span> : null}
-                  </li>
-                ))}
+                {isLoading ? (
+                  <div className="flex animate-pulse flex-col gap-3">
+                    <div className="h-8 rounded-lg bg-purple-900/40"></div>
+                    <div className="h-8 rounded-lg bg-purple-900/40"></div>
+                  </div>
+                ) : error ? null : (
+                  edges.map((edge) => (
+                    <li key={edge.id} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-2">
+                      <span className="font-medium text-slate-100">{edge.source}</span> → <span className="font-medium text-slate-100">{edge.target}</span>
+                      {edge.label ? <span className="ml-2 text-purple-200">({edge.label})</span> : null}
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           </div>

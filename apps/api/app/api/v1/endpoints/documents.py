@@ -4,7 +4,7 @@ import traceback
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
-from app.core.dependencies import require_database
+
 from app.schemas.document import DocumentResponse, PaginatedDocumentsResponse
 from app.services.document_service import document_service
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload a study document",
-    dependencies=[Depends(require_database)],
+    
 )
 async def upload_document(
     file: UploadFile = File(..., description="PDF, TXT, or DOCX file"),
@@ -57,21 +57,13 @@ async def upload_document(
     "",
     response_model=PaginatedDocumentsResponse,
     summary="List uploaded documents",
-    dependencies=[Depends(require_database)],
+    
 )
 async def list_documents(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> PaginatedDocumentsResponse:
-    try:
-        result = await document_service.list_documents(page=page, page_size=page_size)
-    except Exception as exc:
-        print(f"Document listing failed: {exc}")
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is unavailable",
-        ) from exc
+    result = await document_service.list_documents(page=page, page_size=page_size)
     return PaginatedDocumentsResponse(**result)
 
 
@@ -79,18 +71,10 @@ async def list_documents(
     "/{document_id}",
     response_model=DocumentResponse,
     summary="Get document by ID",
-    dependencies=[Depends(require_database)],
+    
 )
 async def get_document(document_id: str) -> DocumentResponse:
-    try:
-        result = await document_service.get_document(document_id)
-    except Exception as exc:
-        print(f"Document lookup failed: {exc}")
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is unavailable",
-        ) from exc
+    result = await document_service.get_document(document_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

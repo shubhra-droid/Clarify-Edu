@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Headphones, Sparkles } from "lucide-react";
+import { BookOpen, Headphones, Sparkles, AlertCircle } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getDocument, listDocuments } from "@/services/documents";
+import { useDocumentStore } from "@/store/document-store";
 import type { UploadedDocument } from "@/types";
 
 type LearnerProfile = "dyslexia" | "autism";
@@ -16,45 +16,67 @@ export default function StudyPage() {
   const searchParams = useSearchParams();
   const profile = (searchParams.get("profile") as LearnerProfile | null) ?? "dyslexia";
   const selectedView = searchParams.get("view") ?? "study";
-  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
+  const { documents, selectedDocumentId, setSelectedDocumentId } = useDocumentStore();
+  const [playbackState, setPlaybackState] = useState<"stopped" | "playing" | "paused">("stopped");
   const [audioRate, setAudioRate] = useState(1);
 
   useEffect(() => {
-    const loadDocuments = async () => {
-      try {
-        const response = await listDocuments(1, 10);
-        setDocuments(response.items);
-        if (response.items[0]) {
-          setSelectedId(response.items[0].id);
-          setSelectedDoc(response.items[0]);
-        }
-      } catch {
-        setDocuments([]);
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
       }
     };
-
-    void loadDocuments();
   }, []);
 
+  // If no document is selected, auto-select the first one available
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedDocumentId && documents.length > 0) {
+      const firstDoc = documents[0];
+      if (firstDoc) {
+        setSelectedDocumentId(firstDoc.id);
+      }
+    }
+  }, [documents, selectedDocumentId, setSelectedDocumentId]);
 
-    const loadSelected = async () => {
-      const doc = await getDocument(selectedId);
-      setSelectedDoc(doc);
-    };
+  const selectedId = selectedDocumentId ?? "";
+  const selectedDoc = documents.find((doc) => doc.id === selectedId) || null;
 
-    void loadSelected();
-  }, [selectedId]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fallbackSummary, setFallbackSummary] = useState<string | null>(null);
+  const [fallbackPoints, setFallbackPoints] = useState<any[] | null>(null);
 
-  const demoSummary = selectedDoc?.studySummary || "Upload a document to create a structured study summary with key definitions, flashcards, and neuro-inclusive notes.";
-  const demoPoints = selectedDoc?.keyPoints?.length ? selectedDoc.keyPoints : [
+  useEffect(() => {
+    if (selectedDoc && (!selectedDoc.studySummary || !selectedDoc.keyPoints || selectedDoc.keyPoints.length === 0)) {
+      setIsLoading(true);
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/generate-studyplan?document_id=${selectedId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to generate study plan");
+          return res.json();
+        })
+        .then(data => {
+          if (data.outline && data.outline[0]) setFallbackSummary(data.outline[0].content);
+          setFallbackPoints(data.key_points);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          setError(err.message);
+          setIsLoading(false);
+        });
+    } else {
+      setError(null);
+      setIsLoading(false);
+      setFallbackSummary(null);
+      setFallbackPoints(null);
+    }
+  }, [selectedDoc, selectedId]);
+
+  const demoSummary = selectedDoc?.studySummary || fallbackSummary || "Upload a document to create a structured study summary with key definitions, flashcards, and neuro-inclusive notes.";
+  const demoPoints = selectedDoc?.keyPoints?.length ? selectedDoc.keyPoints : (fallbackPoints ?? [
     { term: "Core concept", definition: "The main idea captured from the document" },
-    { term: "Key takeaway", definition: "A short explanation you can revisit quickly" },
-  ];
+    { term: "Key takeaway", definition: "A short explanation you can revisit quickly" }
+  ]);
 
   const profileTheme = useMemo(() => {
     if (profile === "autism") {
@@ -68,33 +90,41 @@ export default function StudyPage() {
     }
 
     return {
-        shell: "border-purple-500/40 bg-[#170a2b] text-white",
-        accent: "text-purple-200",
-        panel: "border-purple-500/30 bg-purple-900/40",
-        text: "text-slate-100",
-        muted: "text-slate-300",
-      };
+      shell: "border-purple-500/40 bg-[#170a2b] text-white",
+      accent: "text-purple-200",
+      panel: "border-purple-500/30 bg-purple-900/40",
+      text: "text-slate-100",
+      muted: "text-slate-300",
+    };
   }, [profile]);
 
-  const handleAudioToggle = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+  const handlePlay = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (playbackState === "paused") {
+      window.speechSynthesis.resume();
+      setPlaybackState("playing");
       return;
     }
-
-    if (isAudioPlaying) {
-      window.speechSynthesis.cancel();
-      setIsAudioPlaying(false);
-      return;
-    }
-
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(demoSummary);
     utterance.lang = "en-US";
     utterance.rate = audioRate;
-    utterance.onend = () => setIsAudioPlaying(false);
-    utterance.onerror = () => setIsAudioPlaying(false);
-    window.speechSynthesis.cancel();
+    utterance.onend = () => setPlaybackState("stopped");
+    utterance.onerror = () => setPlaybackState("stopped");
     window.speechSynthesis.speak(utterance);
-    setIsAudioPlaying(true);
+    setPlaybackState("playing");
+  };
+
+  const handlePause = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.pause();
+    setPlaybackState("paused");
+  };
+
+  const handleStop = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    setPlaybackState("stopped");
   };
 
   return (
@@ -118,14 +148,14 @@ export default function StudyPage() {
             </div>
             <select
               value={selectedId}
-              onChange={(event) => setSelectedId(event.target.value)}
+              onChange={(event) => setSelectedDocumentId(event.target.value)}
               className="rounded-lg border border-purple-400/30 bg-[#140a24] px-3 py-2 text-sm text-slate-100"
             >
               {documents.length === 0 ? (
-                <option value="">No documents yet</option>
+                <option value="" className="bg-purple-950 text-white">No documents yet</option>
               ) : (
                 documents.map((doc) => (
-                  <option key={doc.id} value={doc.id}>{doc.filename}</option>
+                  <option key={doc.id} value={doc.id} className="bg-purple-950 text-white">{doc.filename}</option>
                 ))
               )}
             </select>
@@ -141,18 +171,31 @@ export default function StudyPage() {
                 Built-in reading controls help support auditory processing and a calmer review flow.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button onClick={handleAudioToggle} className="bg-purple-600 text-white hover:bg-purple-500">
-                  {isAudioPlaying ? "Pause Audio" : "Play Audio"}
+                {playbackState !== "playing" ? (
+                  <Button onClick={handlePlay} className="bg-purple-600 text-white hover:bg-purple-500">
+                    {playbackState === "paused" ? "Resume" : "Play Audio"}
+                  </Button>
+                ) : (
+                  <Button onClick={handlePause} className="bg-purple-600 text-white hover:bg-purple-500">
+                    Pause
+                  </Button>
+                )}
+                <Button onClick={handleStop} variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" disabled={playbackState === "stopped"}>
+                  Stop
                 </Button>
-                <Button variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" onClick={() => setAudioRate(0.9)}>
-                  0.9x
-                </Button>
-                <Button variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" onClick={() => setAudioRate(1)}>
-                  1.0x
-                </Button>
-                <Button variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" onClick={() => setAudioRate(1.2)}>
-                  1.2x
-                </Button>
+
+                <div className="ml-4 flex items-center gap-1">
+                  <span className="text-xs text-purple-300">Speed:</span>
+                  <Button variant="outline" size="sm" className={audioRate === 1 ? "bg-purple-800 text-white" : "border-purple-400/60 text-white hover:bg-purple-800"} onClick={() => { setAudioRate(1); if (playbackState === "playing") handleStop(); }}>
+                    1x
+                  </Button>
+                  <Button variant="outline" size="sm" className={audioRate === 1.25 ? "bg-purple-800 text-white" : "border-purple-400/60 text-white hover:bg-purple-800"} onClick={() => { setAudioRate(1.25); if (playbackState === "playing") handleStop(); }}>
+                    1.25x
+                  </Button>
+                  <Button variant="outline" size="sm" className={audioRate === 1.5 ? "bg-purple-800 text-white" : "border-purple-400/60 text-white hover:bg-purple-800"} onClick={() => { setAudioRate(1.5); if (playbackState === "playing") handleStop(); }}>
+                    1.5x
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -163,24 +206,43 @@ export default function StudyPage() {
                 <BookOpen className="h-5 w-5" />
                 <h3 className="text-lg font-semibold text-white">Study Summary</h3>
               </div>
-              <p className={`text-sm leading-7 ${profileTheme.text}`} style={profile === "dyslexia" ? { letterSpacing: "0.08em", lineHeight: 1.8 } : undefined}>
-                {demoSummary}
-              </p>
+              {isLoading ? (
+                <div className="flex animate-pulse flex-col gap-3">
+                  <div className="h-24 rounded-lg bg-purple-900/40"></div>
+                </div>
+              ) : error ? (
+                <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-4 text-red-200">
+                  <AlertCircle className="mb-2 h-5 w-5" />
+                  {error}
+                </div>
+              ) : (
+                <p className={`text-sm leading-7 ${profileTheme.text}`} style={profile === "dyslexia" ? { letterSpacing: "0.08em", lineHeight: 1.8 } : undefined}>
+                  {demoSummary}
+                </p>
+              )}
             </div>
             <div className={`rounded-2xl border p-4 ${profileTheme.panel}`}>
               <h3 className="mb-3 text-lg font-semibold text-white">Key Points</h3>
               <ul className={`space-y-2 text-sm ${profileTheme.muted}`}>
-                {demoPoints.map((point, index) => {
-                  const term = typeof point.term === "string" ? point.term : "Key point";
-                  const definition = typeof point.definition === "string" ? point.definition : "Details coming soon";
+                {isLoading ? (
+                  <div className="flex animate-pulse flex-col gap-3">
+                    <div className="h-16 rounded-lg bg-purple-900/40"></div>
+                    <div className="h-16 rounded-lg bg-purple-900/40"></div>
+                  </div>
+                ) : error ? null : demoPoints.length === 0 ? (
+                  <p className="text-purple-200">No key points mapped yet.</p>
+                ) : (
+                  demoPoints.map((point, index) => {
+                    const term = point.term || "Key point";
+                    const definition = point.definition || "Details coming soon";
 
-                  return (
-                    <li key={`${term}-${index}`} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-2">
-                      <p className="font-medium text-slate-100">{term}</p>
-                      <p className="text-slate-400">{definition}</p>
-                    </li>
-                  );
-                })}
+                    return (
+                      <li key={`${term}-${index}`} className="rounded-lg border border-purple-400/20 bg-[#140a24] p-2">
+                        <p className="font-medium text-slate-100">{term}</p>
+                        <p className="text-purple-200">{definition}</p>
+                      </li>
+                    );
+                  }))}
               </ul>
             </div>
           </div>

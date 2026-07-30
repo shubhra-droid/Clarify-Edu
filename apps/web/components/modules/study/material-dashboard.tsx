@@ -44,8 +44,8 @@ export function MaterialDashboard({ material }: MaterialDashboardProps) {
       {/* Header Info */}
       <div className="border-b pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{material.title}</h1>
-          <p className="mt-1 line-clamp-1 text-sm text-slate-700">{material.summary}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">{material.title}</h1>
+          <p className="mt-1 line-clamp-1 text-sm text-purple-100">{material.summary}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs bg-primary/10 text-primary font-semibold px-2 py-1 rounded-full uppercase">
@@ -75,7 +75,7 @@ export function MaterialDashboard({ material }: MaterialDashboardProps) {
               "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-all outline-none",
               activeTab === id
                 ? "border-primary text-primary"
-                : "border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300"
+                : "border-transparent text-purple-200 hover:text-white hover:border-purple-300"
             )}
           >
             <Icon className="h-4 w-4" aria-hidden="true" />

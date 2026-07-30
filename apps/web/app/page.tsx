@@ -16,18 +16,18 @@ export default function HomePage() {
     >
       <div className="mx-auto max-w-2xl text-center">
         <div
-          className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-slate-800"
+          className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/20 px-4 py-2 text-sm font-medium text-white"
           role="status"
         >
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           <span>Neuroinclusive Learning Platform</span>
         </div>
 
-        <h1 className="mb-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+        <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
           ClarifyEdu
         </h1>
 
-        <p className="mb-8 text-lg text-slate-700">
+        <p className="mb-8 text-lg text-purple-100">
           AI-Powered Adaptive Learning Engine for Neurodiverse Education.
           Transform unstructured content into cognitive formats optimized for
           your learning style.

@@ -20,7 +20,7 @@ export function AppShell({ children, title }: AppShellProps) {
         <Navbar title={title} />
         <main
           id="main-content"
-          className="flex-1 p-4 text-slate-900 md:p-6 [&_h1]:text-slate-900 [&_h2]:text-slate-900 [&_h3]:text-slate-900 [&_p]:text-slate-700 [&_span]:text-slate-700 [&_a]:text-slate-700"
+          className="flex-1 p-4 text-white md:p-6 [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_p]:text-purple-100 [&_span]:text-purple-100 [&_a]:text-text-secondary"
           tabIndex={-1}
         >
           {children}
