@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, Upload, X } from "lucide-react";
+import { Brain, FileText, Loader2, Sparkles, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,28 @@ interface DocumentUploadProps {
   onUploadComplete?: (document: UploadedDocument) => void;
 }
 
+type LearnerProfile = "dyslexia" | "autism";
+
+const profileOptions: Array<{
+  id: LearnerProfile;
+  title: string;
+  subtitle: string;
+  highlights: string[];
+}> = [
+  {
+    id: "dyslexia",
+    title: "Dyslexic Profile",
+    subtitle: "OpenDyslexic-inspired readability, spaced text, audio-first learning, and supportive study pacing.",
+    highlights: ["Letter spacing & bionic reading", "Audio support", "Syllable-friendly layout"],
+  },
+  {
+    id: "autism",
+    title: "Autistic Profile",
+    subtitle: "Low-sensory structure, calm visual hierarchy, clear bullet summaries, and uncluttered mind maps.",
+    highlights: ["Structured sections", "Minimal clutter", "Visual clarity"],
+  },
+];
+
 export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -32,6 +54,8 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
+  const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
+  const [uploadedDocument, setUploadedDocument] = useState<UploadedDocument | null>(null);
   const router = useRouter();
 
   const validateFile = useCallback((candidate: File): string | null => {
@@ -75,7 +99,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   );
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !learnerProfile) return;
 
     setIsUploading(true);
     setError(null);
@@ -83,23 +107,36 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
     try {
       const document = await uploadDocument(file);
       onUploadComplete?.(document);
+      setUploadedDocument(document);
       setFile(null);
       setProcessingDocumentId(document.id);
 
       if (document.status === "completed") {
-        setStatusMessage("Upload completed. Opening the Study workspace now.");
-        router.push("/dashboard/study");
+        setStatusMessage("Upload completed. Your adaptive workspace is ready.");
         return;
       }
 
       setStatusMessage(
-        "Upload received and is being processed. We’ll redirect you to the study view as soon as it completes."
+        "Upload received and is being processed. Your adaptive study view will appear soon."
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleSelectView = (view: "study" | "mindmap" | "audio") => {
+    if (!learnerProfile) return;
+
+    const params = new URLSearchParams({ profile: learnerProfile });
+    if (view === "audio") {
+      params.set("view", "audio");
+      router.push(`/dashboard/study?${params.toString()}`);
+      return;
+    }
+
+    router.push(`/dashboard/${view}?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -113,7 +150,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         const doc = await response.json();
         if (doc.status === "completed") {
           window.clearInterval(intervalId);
-          router.push("/dashboard/study");
+          setUploadedDocument((prev) => prev ? { ...prev, status: "completed" } : prev);
         }
       } catch {
         // Ignore transient polling errors.
@@ -121,21 +158,59 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
     }, 2000);
 
     return () => window.clearInterval(intervalId);
-  }, [processingDocumentId, router]);
+  }, [processingDocumentId]);
 
   return (
-    <Card className="border-slate-700 bg-slate-900 text-white shadow-xl">
+    <Card className="border border-purple-500/40 bg-[#120824] text-white shadow-2xl shadow-purple-950/40">
       <CardHeader>
+        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-purple-600/20 px-3 py-1 text-sm font-medium text-purple-200">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          Adaptive Upload Flow
+        </div>
         <CardTitle className="flex items-center gap-2 text-white">
-          <Upload className="h-5 w-5 text-primary" aria-hidden="true" />
-          Upload Study Material
+          <Upload className="h-5 w-5 text-purple-300" aria-hidden="true" />
+          Personalize your learner workspace
         </CardTitle>
-        <CardDescription className="text-slate-300">
-          PDF, TXT, or DOCX — up to {MAX_UPLOAD_SIZE_MB}MB. Content will be
-          transformed into adaptive formats.
+        <CardDescription className="text-slate-100">
+          Choose a learner profile, upload study material, and open a tailored study experience for dyslexia or autism support.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          {profileOptions.map((profile) => {
+            const selected = learnerProfile === profile.id;
+            return (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => setLearnerProfile(profile.id)}
+                className={cn(
+                  "rounded-2xl border p-4 text-left transition-all",
+                  selected
+                    ? "border-purple-400 bg-purple-700/40 shadow-lg shadow-purple-950/30"
+                    : "border-purple-500/30 bg-purple-900/40 hover:border-purple-400/70"
+                )}
+              >
+                <p className="text-sm font-semibold text-white">{profile.title}</p>
+                <p className="mt-1 text-sm text-slate-200">{profile.subtitle}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {profile.highlights.map((item) => (
+                    <span key={item} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-slate-100">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {!learnerProfile ? (
+          <div className="rounded-2xl border border-purple-500/30 bg-purple-900/30 p-3 text-sm text-slate-100">
+            Select a profile to unlock the adaptive upload and study tools.
+          </div>
+        ) : null}
+
         <div
           role="button"
           tabIndex={0}
@@ -152,23 +227,14 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={cn(
-            "focus-ring flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-600 bg-slate-800/80 p-8 transition-colors",
-            isDragging
-              ? "border-primary bg-primary/10"
-              : "hover:border-primary/60"
+            "focus-ring flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-purple-500/40 bg-purple-900/40 p-8 transition-colors",
+            isDragging ? "border-purple-300 bg-purple-700/30" : "hover:border-purple-300"
           )}
           aria-label="File drop zone. Press Enter to browse files."
         >
-          <Upload
-            className="mb-3 h-10 w-10 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <p className="mb-1 text-sm font-medium text-white">
-            Drag & drop your document here
-          </p>
-          <p className="mb-4 text-xs text-slate-300">
-            or click to browse
-          </p>
+          <Upload className="mb-3 h-10 w-10 text-purple-300" aria-hidden="true" />
+          <p className="mb-1 text-sm font-medium text-white">Drag & drop your document here</p>
+          <p className="mb-4 text-xs text-slate-100">or click to browse</p>
           <input
             id="file-input"
             type="file"
@@ -182,7 +248,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
           <Button
             variant="outline"
             size="sm"
-            className="border border-slate-600 bg-slate-800 text-white hover:bg-slate-700"
+            className="border border-purple-400/60 bg-purple-700/60 text-white hover:bg-purple-600"
             onClick={() => document.getElementById("file-input")?.click()}
           >
             Browse Files
@@ -190,69 +256,65 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         </div>
 
         {file && (
-          <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/80 p-3">
+          <div className="flex items-center justify-between rounded-2xl border border-purple-500/30 bg-purple-900/40 p-3">
             <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
+              <FileText className="h-5 w-5 text-purple-300" aria-hidden="true" />
               <div>
                 <p className="text-sm font-medium text-white">{file.name}</p>
-                <p className="text-xs text-slate-300">
-                  {(file.size / 1024).toFixed(1)} KB
-                </p>
+                <p className="text-xs text-slate-100">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFile(null)}
-              aria-label="Remove selected file"
-            >
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={() => setFile(null)} aria-label="Remove selected file">
+              <X className="h-4 w-4 text-white" />
             </Button>
           </div>
         )}
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="text-sm text-rose-300" role="alert">
             {error}
           </p>
         )}
 
         <Button
-          className="w-full"
-          disabled={!file || isUploading}
+          className="w-full bg-purple-600 font-semibold text-white hover:bg-purple-500"
+          disabled={!file || !learnerProfile || isUploading}
           onClick={handleUpload}
           aria-busy={isUploading}
         >
           {isUploading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
               Uploading…
             </>
           ) : (
             <>
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              Upload & Process
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              Upload & Launch Adaptive Workspace
             </>
           )}
         </Button>
 
         {statusMessage && (
-          <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
+          <div className="rounded-2xl border border-purple-500/30 bg-purple-900/40 p-4">
             <p className="text-sm text-slate-100">{statusMessage}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" onClick={() => router.push("/dashboard/study")}>
-                Open Study
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/mindmap")}>
-                Open Mind Map
-              </Button>
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
+              <Button size="sm" className="bg-purple-600 text-white hover:bg-purple-500" onClick={() => handleSelectView("study")}>Study</Button>
+              <Button size="sm" variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" onClick={() => handleSelectView("mindmap")}>Mind Map</Button>
+              <Button size="sm" variant="outline" className="border-purple-400/60 text-white hover:bg-purple-800" onClick={() => handleSelectView("audio")}>Audio Reader</Button>
             </div>
+            {uploadedDocument ? (
+              <div className="mt-3 rounded-xl border border-purple-500/30 bg-[#170a2b] p-3 text-sm text-slate-100">
+                <p className="font-semibold text-white">{uploadedDocument.filename}</p>
+                <p className="mt-1 text-slate-300">Status: {uploadedDocument.status}</p>
+              </div>
+            ) : null}
           </div>
         )}
 
         <div className="flex flex-wrap gap-2">
           {ACCEPTED_FILE_EXTENSIONS.map((ext) => (
-            <Badge key={ext} variant="outline">
+            <Badge key={ext} variant="outline" className="border-purple-400/40 bg-purple-900/40 text-slate-100">
               {ext}
             </Badge>
           ))}
