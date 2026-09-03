@@ -20,7 +20,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ title = "Dashboard" }: NavbarProps) {
-  const neuroProfile = useAccessibilityStore((s) => s.neuroProfile);
+  const { neuroProfile, setNeuroProfile } = useAccessibilityStore();
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,12 +43,27 @@ export function Navbar({ title = "Dashboard" }: NavbarProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 items-center gap-3">
+      <div className="flex flex-1 items-center gap-4">
         <h1 className="text-lg font-semibold tracking-tight text-slate-100">{title}</h1>
-        <Badge variant="secondary" className="hidden sm:inline-flex capitalize border-primary/30 bg-primary/15 text-slate-100">
-          <Sparkles className="mr-1 h-3 w-3" aria-hidden="true" />
-          {neuroProfile} mode
-        </Badge>
+        <div className="hidden sm:flex items-center gap-1 rounded-full border bg-muted/20 p-1">
+          {([
+            { id: 'adhd', label: 'ADHD' },
+            { id: 'dyslexia', label: 'Dyslexic' },
+            { id: 'asd', label: 'Autistic' },
+          ] as const).map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setNeuroProfile(mode.id)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${neuroProfile === mode.id
+                  ? 'bg-primary/15 text-primary border border-primary/30'
+                  : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
+                }`}
+            >
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
+              {mode.label} Mode
+            </button>
+          ))}
+        </div>
       </div>
 
       <FocusTimer compact />

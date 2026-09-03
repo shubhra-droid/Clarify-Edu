@@ -6,6 +6,10 @@ from pathlib import Path
 import pdfplumber
 import PyPDF2
 import docx
+import fitz  # pymupdf
+import io
+import pytesseract
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +46,7 @@ class DocumentExtractionService:
                 return f.read()
 
     def _extract_pdf(self, path: Path) -> str:
-        """Extract text from PDF using pdfplumber with PyPDF2 fallback."""
+        """Extract text from PDF using pdfplumber with PyPDF2 and OCR fallbacks."""
         text_content = []
         try:
             with pdfplumber.open(path) as pdf:
@@ -52,7 +56,7 @@ class DocumentExtractionService:
                         text_content.append(page_text)
                     else:
                         logger.debug("pdfplumber extracted empty text on page %d of %s", i + 1, path.name)
-            
+
             full_text = "\n".join(text_content).strip()
             if full_text:
                 return full_text
@@ -75,8 +79,32 @@ class DocumentExtractionService:
         except Exception as exc:
             logger.error("PyPDF2 extraction fallback failed for %s: %s", path.name, exc)
 
+        # OCR fallback — for scanned/image-only PDFs
+        logger.warning("No typed text found in PDF %s. Trying OCR on rendered pages.", path.name)
+        ocr_text = self._ocr_pdf(path)
+        if ocr_text:
+            return ocr_text
+
         raise ValueError(f"Failed to extract readable text from PDF file: {path.name}")
 
+    def _ocr_pdf(self, path: Path) -> str:
+        """Render each PDF page as an image and OCR it (for scanned PDFs)."""
+        ocr_pages = []
+        try:
+            doc = fitz.open(path)
+            for i, page in enumerate(doc):
+                pix = page.get_pixmap(dpi=200)
+                img_bytes = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_bytes))
+                page_text = pytesseract.image_to_string(image)
+                if page_text.strip():
+                    ocr_pages.append(page_text.strip())
+            doc.close()
+        except Exception as exc:
+            logger.error("OCR failed for PDF %s: %s", path.name, exc)
+        return "\n\n".join(ocr_pages).strip()
+
+           
     def _extract_docx(self, path: Path) -> str:
         """Extract text from Word Document using python-docx."""
         try:

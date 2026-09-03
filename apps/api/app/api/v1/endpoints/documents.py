@@ -2,8 +2,7 @@
 
 import traceback
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from app.schemas.document import DocumentResponse, PaginatedDocumentsResponse
 from app.services.document_service import document_service
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload a study document",
-    
 )
 async def upload_document(
     file: UploadFile = File(..., description="PDF, TXT, or DOCX file"),
@@ -57,7 +55,6 @@ async def upload_document(
     "",
     response_model=PaginatedDocumentsResponse,
     summary="List uploaded documents",
-    
 )
 async def list_documents(
     page: int = Query(1, ge=1),
@@ -71,7 +68,6 @@ async def list_documents(
     "/{document_id}",
     response_model=DocumentResponse,
     summary="Get document by ID",
-    
 )
 async def get_document(document_id: str) -> DocumentResponse:
     result = await document_service.get_document(document_id)
@@ -81,3 +77,17 @@ async def get_document(document_id: str) -> DocumentResponse:
             detail="Document not found",
         )
     return DocumentResponse(**result)
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a document",
+)
+async def delete_document(document_id: str) -> None:
+    deleted = await document_service.delete_document(document_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )

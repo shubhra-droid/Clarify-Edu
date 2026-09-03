@@ -11,6 +11,7 @@ import {
   Loader2,
   Sparkles,
   XCircle,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -127,12 +128,25 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
                     <h3 className="text-xl font-bold tracking-tight">Transformation Failed</h3>
                     <p className="mt-2 text-sm text-muted-foreground">{error}</p>
                   </div>
-                  <Button asChild variant="outline">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                      <ArrowLeft className="h-4 w-4" />
-                      Back to Dashboard
-                    </Link>
-                  </Button>
+                  <div className="flex gap-4 items-center justify-center mt-2">
+                    <Button asChild variant="outline">
+                      <Link href="/dashboard" className="flex items-center gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Dashboard
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        if (!confirm("Delete this document?")) return;
+                        await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/documents/${params.id}`, { method: "DELETE" });
+                        router.push("/dashboard");
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Document
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-8">

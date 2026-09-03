@@ -68,5 +68,8 @@ class DocumentService:
             return None
         return document_to_response(doc)
 
+    async def delete_document(self, document_id: str) -> bool:
+        return await document_store.delete_document(document_id)
+
 
 document_service = DocumentService()

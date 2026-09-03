@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, FileText, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, Sparkles, Trash2 } from "lucide-react";
 
 import {
   Card,
@@ -57,6 +57,22 @@ export default function DashboardPage() {
 
   const handleUploadComplete = (doc: UploadedDocument) => {
     setDocuments((prev) => [doc, ...prev]);
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this document?")) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/documents/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok || res.status === 404) {
+        setDocuments((prev) => prev.filter((d) => d.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete", err);
+    }
   };
 
   return (
@@ -129,6 +145,14 @@ export default function DashboardPage() {
                         {isCompleted && (
                           <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-slate-500 hover:text-red-400 z-10"
+                          onClick={(e) => handleDelete(doc.id, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   );

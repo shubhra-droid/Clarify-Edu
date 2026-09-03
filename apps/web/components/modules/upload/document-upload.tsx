@@ -150,9 +150,16 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         if (!response.ok) return;
 
         const doc = await response.json();
-        if (doc.status === "completed") {
+        if (doc.status === "completed" || doc.status === "failed") {
           window.clearInterval(intervalId);
-          setUploadedDocument((prev) => prev ? { ...prev, status: "completed" } : prev);
+          setUploadedDocument((prev) => prev ? { ...prev, status: doc.status } : prev);
+
+          if (doc.status === "failed") {
+            setError(doc.error_message || "Document processing failed.");
+            setStatusMessage(null);
+          } else {
+            setStatusMessage("Upload completed. Your adaptive workspace is ready.");
+          }
         }
       } catch {
         // Ignore transient polling errors.

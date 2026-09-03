@@ -52,8 +52,37 @@ function mapAdaptiveMaterial(apiData: any): AdaptiveStudyMaterial {
 }
 
 export async function getStudyMaterial(documentId: string): Promise<AdaptiveStudyMaterial> {
-  const response = await apiFetch<any>(`/materials/${documentId}`);
-  return mapAdaptiveMaterial(response);
+  const [mindMapData, planData] = await Promise.all([
+    apiFetch<any>(`/generate-mindmap?document_id=${documentId}`),
+    apiFetch<any>(`/generate-studyplan?document_id=${documentId}`)
+  ]);
+
+  if (mindMapData.error && mindMapData.error !== "Not yet generated") {
+    throw new Error(mindMapData.error);
+  }
+  if (planData.error && planData.error !== "Not yet generated") {
+    throw new Error(planData.error);
+  }
+
+  return {
+    id: `mat-${documentId}`,
+    documentId: documentId,
+    title: planData.title || "Study Material",
+    summary: planData.overview || "",
+    keyDefinitions: planData.key_points || [],
+    structuredNotes: planData.outline || [],
+    adhdBulletSummary: planData.milestones || [],
+    mindMap: {
+      nodes: mindMapData.nodes || [],
+      edges: mindMapData.edges || [],
+    },
+    quiz: [],
+    flashcards: [],
+    ttsScript: [],
+    neuroProfile: "mixed",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export async function getDocumentStatus(documentId: string): Promise<UploadedDocument> {

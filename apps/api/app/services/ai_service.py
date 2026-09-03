@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from openai import OpenAI
+from google import genai
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -59,32 +59,32 @@ class AIStudyMaterialPayload(BaseModel):
 
 class AIService:
     def __init__(self) -> None:
-        self.api_key = settings.OPENAI_API_KEY
+        self.api_key = settings.GEMINI_API_KEY
         if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+            self.client = genai.Client(api_key=self.api_key)
         else:
             self.client = None
 
     async def generate_material(
         self, document_id: str, filename: str, content: str
     ) -> AdaptiveStudyMaterial:
-        """Generate AdaptiveStudyMaterial using OpenAI or fallback mock."""
+        """Generate AdaptiveStudyMaterial using Gemini or fallback mock."""
         logger.info("Generating study material for document ID: %s", document_id)
 
         # Prepare base fields
         now = datetime.now(timezone.utc)
         material_id = str(uuid4())
 
-        # If API key is set, call OpenAI
-        if self.client:
+        # If API key is set, call Gemini
+        if self.model:
             try:
-                material_data = await self._call_openai(filename, content)
+                material_data = await self._call_gemini(filename, content)
                 return self._create_material_from_payload(
                     material_id, document_id, material_data, now
                 )
             except Exception as exc:
                 logger.error(
-                    "OpenAI generation failed: %s. Falling back to mock generator.",
+                    "Gemini generation failed: %s. Falling back to mock generator.",
                     exc,
                 )
 
@@ -94,12 +94,14 @@ class AIService:
             material_id, document_id, material_data, now
         )
 
-    async def _call_openai(self, filename: str, content: str) -> AIStudyMaterialPayload:
-        """Call OpenAI with Structured Outputs."""
-        truncated_content = content[:15000]  # Prevent token overflow
+    async def _call_gemini(self, filename: str, content: str) -> AIStudyMaterialPayload:
+        """Call Gemini with JSON mode."""
+        truncated_content = content[:30000]  # Gemini has large context
 
+        schema_props = AIStudyMaterialPayload.model_json_schema()
+        
         prompt = f"""
-You are a expert neurodiverse learning assistant. Reshape the following educational content from the file '{filename}' into adaptive formats.
+You are an expert neurodiverse learning assistant. Reshape the following educational content from the file '{filename}' into adaptive formats.
 Target ADHD, Dyslexia, ASD, and Executive Dysfunction needs:
 - Provide structured summary notes.
 - Define important key terms.
@@ -109,28 +111,25 @@ Target ADHD, Dyslexia, ASD, and Executive Dysfunction needs:
 - Write revision flashcards.
 - Provide a sequence of text segments to be read aloud (tts_script).
 
+IMPORTANT: Your response must be in valid JSON according to this schema:
+{json.dumps(schema_props, indent=2)}
+
 EDUCATIONAL TEXT CONTENT:
 \"\"\"
 {truncated_content}
 \"\"\"
 """
 
-        completion = self.client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a senior accessibility specialist and education researcher. You format document summaries into strict JSON structures optimized for neurodivergent students.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format=AIStudyMaterialPayload,
-        )
+        response = await self.model.generate_content_async(prompt)
+        text_response = response.text
+        
+        try:
+            parsed_json = json.loads(text_response)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Gemini returned invalid JSON: {exc}. Response text: {text_response}")
 
-        parsed_response = completion.choices[0].message.parsed
-        if not parsed_response:
-            raise ValueError("OpenAI returned an empty response")
-        return parsed_response
+        payload = AIStudyMaterialPayload.model_validate(parsed_json)
+        return payload
 
     def _create_material_from_payload(
         self,

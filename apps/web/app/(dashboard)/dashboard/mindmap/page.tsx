@@ -37,7 +37,7 @@ export default function MindMapPage() {
   useEffect(() => {
     if (selectedDoc && (!selectedDoc.mindMapNodes || selectedDoc.mindMapNodes.length === 0)) {
       setIsLoading(true);
-      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/generate-mindmap?document_id=${selectedId}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1/generate-mindmap?document_id=${selectedId}`)
         .then(res => {
           if (!res.ok) throw new Error("Failed to generate mind map");
           return res.json();

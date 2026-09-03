@@ -91,4 +91,56 @@ class DocumentStore:
         paginated_docs = docs[skip : skip + limit]
         return paginated_docs, total
 
+    async def get_study_materials(self, document_id: str) -> dict | None:
+        """Read study materials."""
+        doc = await self.get_document(document_id)
+        if doc and "study_materials" in doc:
+            return doc["study_materials"]
+        return None
+
+    async def save_study_materials(self, document_id: str, materials: dict) -> None:
+        """Save study materials inside the document."""
+        if document_id in _fallback_store:
+            _fallback_store[document_id]["study_materials"] = materials
+        else:
+            _fallback_store[document_id] = {"_id": document_id, "study_materials": materials}
+        try:
+            collection = get_collection(COLLECTION_NAME)
+            await collection.update_one(
+                {"_id": document_id},
+                {"$set": {"study_materials": materials}},
+                upsert=True
+            )
+        except Exception as exc:
+            logger.warning("Mongo write failed for save_study_materials %s. Error: %s", document_id, exc)
+
+    async def update_status(self, document_id: str, status: str, error_message: str | None = None) -> None:
+        if document_id in _fallback_store:
+            _fallback_store[document_id]["status"] = status
+            if error_message:
+                _fallback_store[document_id]["error_message"] = error_message
+        try:
+            collection = get_collection(COLLECTION_NAME)
+            update_fields = {"status": status}
+            if error_message:
+                update_fields["error_message"] = error_message
+            await collection.update_one(
+                {"_id": document_id},
+                {"$set": update_fields}
+            )
+        except Exception as exc:
+            logger.warning("Mongo update_status failed for %s. Error: %s", document_id, exc)
+
+    async def delete_document(self, document_id: str) -> bool:
+        """Delete from both Mongo (if available) and in-memory fallback."""
+        existed = document_id in _fallback_store
+        _fallback_store.pop(document_id, None)
+        try:
+            collection = get_collection(COLLECTION_NAME)
+            result = await collection.delete_one({"_id": document_id})
+            existed = existed or result.deleted_count > 0
+        except Exception as exc:
+            logger.warning("Mongo delete failed for %s. Fallback delete only. Error: %s", document_id, exc)
+        return existed
+
 document_store = DocumentStore()

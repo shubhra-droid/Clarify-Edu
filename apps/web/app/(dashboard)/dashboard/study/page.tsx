@@ -50,7 +50,7 @@ export default function StudyPage() {
   useEffect(() => {
     if (selectedDoc && (!selectedDoc.studySummary || !selectedDoc.keyPoints || selectedDoc.keyPoints.length === 0)) {
       setIsLoading(true);
-      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/generate-studyplan?document_id=${selectedId}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1/generate-studyplan?document_id=${selectedId}`)
         .then(res => {
           if (!res.ok) throw new Error("Failed to generate study plan");
           return res.json();

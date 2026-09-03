@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # AI Providers (wired in later steps)
     OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
     ELEVENLABS_API_KEY: str = ""
 
 
