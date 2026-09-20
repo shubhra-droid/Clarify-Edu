@@ -40,7 +40,7 @@ export function MaterialDashboard({ material }: MaterialDashboardProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-12">
+    <div className="flex flex-col gap-6 w-full pb-12 bg-slate-950 text-white min-h-screen rounded-2xl p-6 border border-purple-900/50 shadow-2xl">
       {/* Header Info */}
       <div className="border-b pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

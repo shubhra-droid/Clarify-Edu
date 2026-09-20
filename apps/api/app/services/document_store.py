@@ -32,6 +32,9 @@ def _sort_key(doc: dict[str, Any]) -> datetime:
     return datetime.min.replace(tzinfo=timezone.utc)
 
 class DocumentStore:
+    def __init__(self):
+        self._is_offline = False
+
     def get_fallback_count(self) -> int:
         return len(_fallback_store)
 
@@ -41,6 +44,9 @@ class DocumentStore:
         _fallback_store[document_id] = document_data
         
         # 2. Try Mongo
+        if self._is_offline:
+            return
+            
         try:
             collection = get_collection(COLLECTION_NAME)
             # Find document if it exists, otherwise insert
@@ -51,37 +57,42 @@ class DocumentStore:
             )
         except Exception as exc:
             logger.warning("Mongo write failed for %s. Continuing with fallback store. Error: %s", document_id, exc)
+            self._is_offline = True
 
     async def get_document(self, document_id: str) -> dict[str, Any] | None:
         """Read from Mongo with graceful fallback to in-memory store."""
-        try:
-            collection = get_collection(COLLECTION_NAME)
-            doc = await collection.find_one({"_id": document_id})
-            if doc:
-                # Cache it in fallback just in case
-                _fallback_store[document_id] = doc
-                return doc
-        except Exception as exc:
-            logger.warning("Mongo read failed for %s. Falling back to memory. Error: %s", document_id, exc)
+        if not self._is_offline:
+            try:
+                collection = get_collection(COLLECTION_NAME)
+                doc = await collection.find_one({"_id": document_id})
+                if doc:
+                    # Cache it in fallback just in case
+                    _fallback_store[document_id] = doc
+                    return doc
+            except Exception as exc:
+                logger.warning("Mongo read failed for %s. Falling back to memory. Error: %s", document_id, exc)
+                self._is_offline = True
             
         # Fallback
         return _fallback_store.get(document_id)
 
     async def list_documents(self, skip: int, limit: int) -> tuple[list[dict[str, Any]], int]:
         """List documents using Mongo, fallback to in-memory store if down."""
-        try:
-            collection = get_collection(COLLECTION_NAME)
-            total = await collection.count_documents({})
-            cursor = collection.find({}).sort("uploaded_at", -1).skip(skip).limit(limit)
-            docs = await cursor.to_list(length=limit)
-            
-            # Update cache
-            for d in docs:
-                _fallback_store[d["_id"]] = d
+        if not self._is_offline:
+            try:
+                collection = get_collection(COLLECTION_NAME)
+                total = await collection.count_documents({})
+                cursor = collection.find({}).sort("uploaded_at", -1).skip(skip).limit(limit)
+                docs = await cursor.to_list(length=limit)
                 
-            return docs, total
-        except Exception as exc:
-            logger.warning("Mongo list failed. Falling back to memory. Error: %s", exc)
+                # Update cache
+                for d in docs:
+                    _fallback_store[d["_id"]] = d
+                    
+                return docs, total
+            except Exception as exc:
+                logger.warning("Mongo list failed. Falling back to memory. Error: %s", exc)
+                self._is_offline = True
             
         # Fallback
         docs = list(_fallback_store.values())
@@ -104,6 +115,10 @@ class DocumentStore:
             _fallback_store[document_id]["study_materials"] = materials
         else:
             _fallback_store[document_id] = {"_id": document_id, "study_materials": materials}
+        
+        if self._is_offline:
+            return
+            
         try:
             collection = get_collection(COLLECTION_NAME)
             await collection.update_one(
@@ -113,12 +128,17 @@ class DocumentStore:
             )
         except Exception as exc:
             logger.warning("Mongo write failed for save_study_materials %s. Error: %s", document_id, exc)
+            self._is_offline = True
 
     async def update_status(self, document_id: str, status: str, error_message: str | None = None) -> None:
         if document_id in _fallback_store:
             _fallback_store[document_id]["status"] = status
             if error_message:
                 _fallback_store[document_id]["error_message"] = error_message
+                
+        if self._is_offline:
+            return
+            
         try:
             collection = get_collection(COLLECTION_NAME)
             update_fields = {"status": status}
@@ -130,17 +150,23 @@ class DocumentStore:
             )
         except Exception as exc:
             logger.warning("Mongo update_status failed for %s. Error: %s", document_id, exc)
+            self._is_offline = True
 
     async def delete_document(self, document_id: str) -> bool:
         """Delete from both Mongo (if available) and in-memory fallback."""
         existed = document_id in _fallback_store
         _fallback_store.pop(document_id, None)
+        
+        if self._is_offline:
+            return existed
+            
         try:
             collection = get_collection(COLLECTION_NAME)
             result = await collection.delete_one({"_id": document_id})
             existed = existed or result.deleted_count > 0
         except Exception as exc:
             logger.warning("Mongo delete failed for %s. Fallback delete only. Error: %s", document_id, exc)
+            self._is_offline = True
         return existed
 
 document_store = DocumentStore()

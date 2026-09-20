@@ -24,12 +24,25 @@ class DocumentResponse(BaseModel):
     uploaded_at: datetime
     processed_at: datetime | None = None
     error_message: str | None = None
+
+    # Legacy fields (kept for backward compatibility, unused by current frontend)
     parsed_sections: dict | None = None
     study_summary: str | None = None
     key_points: list[dict] = Field(default_factory=list)
-    flashcards: list[dict] = Field(default_factory=list)
     mind_map_nodes: list[dict] = Field(default_factory=list)
     mind_map_edges: list[dict] = Field(default_factory=list)
+
+    # Active fields — match llm_service.py output, read directly by page.tsx
+    title: str | None = None
+    summary: str | None = None
+    structured_notes: list[dict] = Field(default_factory=list)
+    key_definitions: list[dict] = Field(default_factory=list)
+    adhd_blocks: list[str] = Field(default_factory=list)
+    nodes: list[dict] = Field(default_factory=list)
+    edges: list[dict] = Field(default_factory=list)
+    flashcards: list[dict] = Field(default_factory=list)
+    quiz: list[dict] = Field(default_factory=list)
+    tts_script: list[str] = Field(default_factory=list)
 
 
 class PaginatedDocumentsResponse(BaseModel):

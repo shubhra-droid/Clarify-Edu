@@ -66,7 +66,23 @@ class DocumentService:
         doc = await document_store.get_document(document_id)
         if doc is None:
             return None
-        return document_to_response(doc)
+
+        response = document_to_response(doc)
+
+        materials = await document_store.get_study_materials(document_id)
+        if materials:
+            response["title"] = materials.get("title")
+            response["summary"] = materials.get("summary")
+            response["structured_notes"] = materials.get("structured_notes", [])
+            response["key_definitions"] = materials.get("key_definitions", [])
+            response["adhd_blocks"] = materials.get("adhd_blocks", [])
+            response["nodes"] = materials.get("nodes", [])
+            response["edges"] = materials.get("edges", [])
+            response["flashcards"] = materials.get("flashcards", [])
+            response["quiz"] = materials.get("quiz", [])
+            response["tts_script"] = materials.get("tts_script", [])
+
+        return response
 
     async def delete_document(self, document_id: str) -> bool:
         return await document_store.delete_document(document_id)

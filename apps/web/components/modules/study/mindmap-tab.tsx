@@ -142,7 +142,7 @@ export function MindMapTab({ mindMap }: MindMapTabProps) {
           <span className="text-xs text-muted-foreground">Scroll to zoom, drag to pan and rearrange nodes</span>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="h-[480px] w-full bg-slate-50 relative">
+          <div className="h-[480px] w-full bg-slate-950 relative rounded-b-xl border-t border-purple-500/20">
             <ReactFlow
               nodes={nodes}
               edges={edges}

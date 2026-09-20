@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from google import genai
+import os
+from groq import AsyncGroq
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -59,32 +60,32 @@ class AIStudyMaterialPayload(BaseModel):
 
 class AIService:
     def __init__(self) -> None:
-        self.api_key = settings.GEMINI_API_KEY
+        self.api_key = os.getenv("GROQ_API_KEY", getattr(settings, "GEMINI_API_KEY", ""))
         if self.api_key:
-            self.client = genai.Client(api_key=self.api_key)
+            self.client = AsyncGroq(api_key=self.api_key)
         else:
             self.client = None
 
     async def generate_material(
         self, document_id: str, filename: str, content: str
     ) -> AdaptiveStudyMaterial:
-        """Generate AdaptiveStudyMaterial using Gemini or fallback mock."""
+        """Generate AdaptiveStudyMaterial using Groq or fallback mock."""
         logger.info("Generating study material for document ID: %s", document_id)
 
         # Prepare base fields
         now = datetime.now(timezone.utc)
         material_id = str(uuid4())
 
-        # If API key is set, call Gemini
-        if self.model:
+        # If API key is set, call Groq
+        if self.client:
             try:
-                material_data = await self._call_gemini(filename, content)
+                material_data = await self._call_groq(filename, content)
                 return self._create_material_from_payload(
                     material_id, document_id, material_data, now
                 )
             except Exception as exc:
                 logger.error(
-                    "Gemini generation failed: %s. Falling back to mock generator.",
+                    "Groq generation failed: %s. Falling back to mock generator.",
                     exc,
                 )
 
@@ -94,7 +95,7 @@ class AIService:
             material_id, document_id, material_data, now
         )
 
-    async def _call_gemini(self, filename: str, content: str) -> AIStudyMaterialPayload:
+    async def _call_groq(self, filename: str, content: str) -> AIStudyMaterialPayload:
         """Call Gemini with JSON mode."""
         truncated_content = content[:30000]  # Gemini has large context
 
@@ -120,13 +121,20 @@ EDUCATIONAL TEXT CONTENT:
 \"\"\"
 """
 
-        response = await self.model.generate_content_async(prompt)
-        text_response = response.text
+        response = await self.client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are a specialized study material generator. You must return valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        text_response = response.choices[0].message.content.strip()
         
         try:
             parsed_json = json.loads(text_response)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"Gemini returned invalid JSON: {exc}. Response text: {text_response}")
+            raise ValueError(f"Groq returned invalid JSON: {exc}. Response text: {text_response}")
 
         payload = AIStudyMaterialPayload.model_validate(parsed_json)
         return payload

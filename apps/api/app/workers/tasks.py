@@ -69,6 +69,12 @@ async def process_document_async(document_id: str) -> None:
             filename=doc["filename"]
         )
 
+        from datetime import datetime, timezone
+        material["id"] = document_id
+        material["document_id"] = document_id
+        material["created_at"] = datetime.now(timezone.utc).isoformat()
+        material["updated_at"] = datetime.now(timezone.utc).isoformat()
+
         # 4. Save materials & complete
         await document_store.save_study_materials(document_id, material)
         await document_store.update_status(document_id, "completed")

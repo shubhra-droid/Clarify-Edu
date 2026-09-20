@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getDocumentStatus, getStudyMaterial } from "@/services/materials";
 import type { AdaptiveStudyMaterial, UploadedDocument } from "@/types";
-import { AppShell } from "@/components/layout/app-shell";
 import { MaterialDashboard } from "@/components/modules/study/material-dashboard";
 
 const MINDFUL_TIPS = [
@@ -40,7 +39,6 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cycle tips every 5 seconds
   useEffect(() => {
     const tipInterval = setInterval(() => {
       setTipIndex((prev) => (prev + 1) % MINDFUL_TIPS.length);
@@ -56,9 +54,31 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
         setStatus(doc.status);
 
         if (doc.status === "completed") {
-          // Fetch the completed study materials
-          const studyMat = await getStudyMaterial(params.id);
-          setMaterial(studyMat);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/documents/${params.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setMaterial({
+              id: `mat-${params.id}`,
+              documentId: params.id,
+              title: data.title || doc.filename || "Study Material",
+              summary: data.summary || "",
+              neuroProfile: "mixed",
+              keyDefinitions: data.key_definitions || [],
+              structuredNotes: data.structured_notes || [],
+              adhdBulletSummary: data.adhd_blocks || [],
+              mindMap: {
+                nodes: data.nodes || [],
+                edges: data.edges || []
+              },
+              quiz: data.quiz || [],
+              flashcards: data.flashcards || [],
+              ttsScript: data.tts_script || [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            setError("Failed to fetch document material");
+          }
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
@@ -79,10 +99,7 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
       }
     };
 
-    // Initial check
     checkStatus();
-
-    // Start polling
     pollIntervalRef.current = setInterval(checkStatus, 2000);
 
     return () => {
@@ -112,12 +129,12 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
   const currentTip = MINDFUL_TIPS[tipIndex] || "";
 
   return (
-    <AppShell title={material?.title || document?.filename || "Study Material"}>
+    <>
       {material ? (
         <MaterialDashboard material={material} />
       ) : (
         <div className="mx-auto flex max-w-2xl flex-col items-center justify-center py-12 md:py-24">
-          <Card className="w-full text-center">
+          <Card className="w-full text-center bg-slate-950 border-purple-500/30 text-white shadow-2xl">
             <CardContent className="pt-6">
               {error ? (
                 <div className="space-y-6">
@@ -149,7 +166,7 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
                   </div>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-8 text-white">
                   <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
                     <div className="absolute inset-0 animate-ping rounded-full bg-primary/10 opacity-75" />
                     <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -166,14 +183,14 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
                     </div>
                   </div>
 
-                  <div className="rounded-xl border bg-accent/5 p-4 text-left">
+                  <div className="rounded-xl border border-purple-500/30 bg-purple-900/40 p-4 text-left">
                     <div className="flex gap-3">
                       <Brain className="h-5 w-5 shrink-0 text-accent" />
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-accent-foreground/75">
                           Neuro-Inclusive Tip
                         </h4>
-                        <p className="mt-1 text-sm text-muted-foreground transition-all duration-300">
+                        <p className="mt-1 text-sm text-purple-100 transition-all duration-300">
                           {currentTip}
                         </p>
                       </div>
@@ -185,6 +202,6 @@ export default function DocumentStudyPage({ params }: { params: { id: string } }
           </Card>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

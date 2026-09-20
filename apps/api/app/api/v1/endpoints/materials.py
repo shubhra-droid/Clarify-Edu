@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Materials"])
 
 
+from app.services.document_store import document_store
+
 @router.get(
     "/materials/{document_id}",
     response_model=AdaptiveStudyMaterial,
@@ -23,8 +25,7 @@ router = APIRouter(tags=["Materials"])
 )
 async def get_study_material(document_id: str) -> AdaptiveStudyMaterial:
     """Retrieve the generated cognitive formats and study resources for a document."""
-    collection = get_collection(STUDY_MATERIALS_COLLECTION)
-    material_data = await collection.find_one({"document_id": document_id})
+    material_data = await document_store.get_study_materials(document_id)
     
     if not material_data:
         raise HTTPException(

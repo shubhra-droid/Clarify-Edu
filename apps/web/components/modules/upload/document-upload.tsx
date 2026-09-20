@@ -26,7 +26,7 @@ interface DocumentUploadProps {
   onUploadComplete?: (document: UploadedDocument) => void;
 }
 
-type LearnerProfile = "dyslexia" | "autism";
+type LearnerProfile = "dyslexia" | "autism" | "adhd";
 
 const profileOptions: Array<{
   id: LearnerProfile;
@@ -39,6 +39,12 @@ const profileOptions: Array<{
       title: "Dyslexic Profile",
       subtitle: "OpenDyslexic-inspired readability, spaced text, audio-first learning, and supportive study pacing.",
       highlights: ["Letter spacing & bionic reading", "Audio support", "Syllable-friendly layout"],
+    },
+    {
+      id: "adhd",
+      title: "ADHD Profile",
+      subtitle: "High-impact micro-chunking, visual progress markers, and focus pacing.",
+      highlights: ["Micro-chunking", "Visual progress markers", "Focus pacing"],
     },
     {
       id: "autism",
@@ -106,22 +112,48 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
     setError(null);
 
     try {
-      const document = await uploadDocument(file);
-      onUploadComplete?.(document);
-      setUploadedDocument(document);
-      setFile(null);
-      setProcessingDocumentId(document.id);
-      useDocumentStore.getState().addDocument(document);
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (document.status === "completed") {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/documents/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload document");
+      }
+
+      const backendDoc = await response.json();
+      const docId = backendDoc.document_id || backendDoc.id;
+
+      const newDoc: UploadedDocument = {
+        id: docId,
+        filename: file.name,
+        mimeType: "application/pdf",
+        sizeBytes: file.size,
+        status: backendDoc.status || "processing",
+        uploadedAt: new Date().toISOString()
+      };
+
+      onUploadComplete?.(newDoc);
+      setUploadedDocument(newDoc);
+      setFile(null);
+      setProcessingDocumentId(newDoc.id);
+      useDocumentStore.getState().addDocument(newDoc);
+
+      if (newDoc.status === "completed") {
         setStatusMessage("Upload completed. Your adaptive workspace is ready.");
+        router.push(`/dashboard/documents/${newDoc.id}`);
         return;
       }
 
       setStatusMessage(
         "Upload received and is being processed. Your adaptive study view will appear soon."
       );
+      router.push(`/dashboard/documents/${newDoc.id}`);
     } catch (err) {
+      console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
@@ -185,7 +217,7 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           {profileOptions.map((profile) => {
             const selected = learnerProfile === profile.id;
             return (
